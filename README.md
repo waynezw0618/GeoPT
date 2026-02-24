@@ -1,4 +1,4 @@
-# <img src=".\pic\logo.png" alt="Logo" width="40" style="vertical-align: middle;">GeoPT
+# <img src=".\pic\logo.png" alt="Logo" width="30" style="vertical-align: middle;">GeoPT
 
 [![Hugging Face](https://img.shields.io/badge/Hugging_Face-GeoPT-F8D44E.svg?logo=huggingface)](https://huggingface.co/GeoPT)
 
