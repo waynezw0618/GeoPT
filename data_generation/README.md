@@ -29,7 +29,7 @@ python GeoPT_PreTraining_Data.py --category car --mesh_root shapenet_folder --sa
 python GeoPT_PreTraining_Data.py --category airplane --mesh_root shapenet_folder --save_root save_path
 ```
 
-On average, each geometry with 100 random walks will take less than 20 seconds on 80 CPU cores (**<0.2s per sample**).ååå
+On average, each geometry with 100 random walks will take less than 20 seconds on 80 CPU cores (**<0.2s per sample**).
 
 4. Of course, you can apply this data generation to **any kind of geometries**, e.g., the general categories in ShapeNet. 
 
