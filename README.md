@@ -5,6 +5,9 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Code-black?logo=github)](https://github.com/Physics-Scaling/GeoPT)
 [![Hugging Face](https://img.shields.io/badge/Hugging_Face-GeoPT-F8D44E.svg?logo=huggingface)](https://huggingface.co/GeoPT)
 
+
+:triangular_flag_on_post:**News** (2026.04) We have released the pre-training data generation code. Please check [./data_generation](https://github.com/Physics-Scaling/GeoPT/tree/main/data_generation).
+
 This is the official code base for GeoPT: Scaling Physics Simulation via Lifted Geometric Pre-Training. [[Paper]](https://arxiv.org/abs/2602.20399)
 
 <p align="center">
