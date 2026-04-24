@@ -33,6 +33,8 @@ parser.add_argument('--geotype', type=str, default='unstructured',
 parser.add_argument('--space_dim', type=int, default=2, help='position information dimension')
 parser.add_argument('--fun_dim', type=int, default=0, help='input observation dimension')
 parser.add_argument('--out_dim', type=int, default=1, help='output observation dimension')
+parser.add_argument('--sample_points', type=int, default=0,
+                    help='randomly sample this many points per case for training/eval; 0 keeps all available points')
 
 ## task
 parser.add_argument('--task', type=str, default='steady',

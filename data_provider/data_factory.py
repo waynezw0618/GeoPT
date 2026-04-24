@@ -1,4 +1,4 @@
-from data_provider.data_loader import DrivAerML, NASA, AirCraft, DTCHull, Car_Crash
+from data_provider.data_loader import DrivAerML, NASA, AirCraft, DTCHull, Car_Crash, NPYFolder
 
 
 def get_data(args, full_mesh=False):
@@ -8,6 +8,7 @@ def get_data(args, full_mesh=False):
         'AirCraft': AirCraft,
         'DTCHull': DTCHull,
         'Car_Crash': Car_Crash,
+        'NPYFolder': NPYFolder,
     }
     dataset = data_dict[args.loader](args)
     train_loader, test_loader, shapelist = dataset.get_loader(full_mesh)

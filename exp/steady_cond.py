@@ -15,13 +15,34 @@ class Exp_Steady(Exp_Basic):
     def __init__(self, args):
         super(Exp_Steady, self).__init__(args)
 
+    def load_pretrained_with_filter(self, model, pretrained_path, exclude_layers=None, map_location="cpu"):
+        if exclude_layers is None:
+            exclude_layers = ("mlp2", "ln_3")  # exclude last layer
+
+        pretrained = torch.load(pretrained_path, map_location=map_location)
+        model_state = model.state_dict()
+
+        filtered = {
+            k: v
+            for k, v in pretrained.items()
+            if k in model_state
+               and model_state[k].shape == v.shape
+               and not any(excl in k for excl in exclude_layers)
+        }
+
+        model_state.update(filtered)
+        model.load_state_dict(model_state)
+
+        print(f"[Pretrain] Loaded {len(filtered)}/{len(pretrained)} parameters")
+        return model
+
     def vali(self):
         myloss = L2Loss(size_average=False)
         self.model.eval()
         rel_err = 0.0
         with torch.no_grad():
             for pos, fx, cond, y in self.test_loader:
-                x, fx, cond, y = pos.cuda(), fx.cuda(), cond.cuda(), y.cuda()
+                x, fx, cond, y = pos.to(self.device), fx.to(self.device), cond.to(self.device), y.to(self.device)
                 fx = torch.cat((fx, cond.repeat(1, fx.shape[1], 1)), dim=-1)
                 if self.args.fun_dim == 0:
                     fx = None
@@ -67,7 +88,7 @@ class Exp_Steady(Exp_Basic):
             train_loss = 0
 
             for pos, fx, cond, y in self.train_loader:
-                x, fx, cond, y = pos.cuda(), fx.cuda(), cond.cuda(), y.cuda()
+                x, fx, cond, y = pos.to(self.device), fx.to(self.device), cond.to(self.device), y.to(self.device)
                 fx = torch.cat((fx, cond.repeat(1, fx.shape[1], 1)), dim=-1)
                 if self.args.fun_dim == 0:
                     fx = None
@@ -124,7 +145,7 @@ class Exp_Steady(Exp_Basic):
         np.save(os.path.join('./training_logs', self.args.save_name + '_test_loss.npy'), np.array(test_loss_list))
 
     def test(self):
-        self.model.load_state_dict(torch.load("./checkpoints/" + self.args.save_name + ".pt"))
+        self.model.load_state_dict(torch.load("./checkpoints/" + self.args.save_name + ".pt", map_location=self.device))
         self.model.eval()
         if not os.path.exists('./results/' + self.args.save_name + '/'):
             os.makedirs('./results/' + self.args.save_name + '/')
@@ -140,7 +161,7 @@ class Exp_Steady(Exp_Basic):
         with torch.no_grad():
             for pos, fx, cond, y in self.test_loader:
                 id += 1
-                x, fx, cond, y = pos.cuda(), fx.cuda(), cond.cuda(), y.cuda()
+                x, fx, cond, y = pos.to(self.device), fx.to(self.device), cond.to(self.device), y.to(self.device)
                 fx = torch.cat((fx, cond.repeat(1, fx.shape[1], 1)), dim=-1)
                 if self.args.fun_dim == 0:
                     fx = None
@@ -169,7 +190,7 @@ class Exp_Steady(Exp_Basic):
         print("test rel_err split max:{}".format(rel_err_split_max))
 
     def test_full_mesh(self):
-        self.model.load_state_dict(torch.load("./checkpoints/" + self.args.save_name + ".pt"))
+        self.model.load_state_dict(torch.load("./checkpoints/" + self.args.save_name + ".pt", map_location=self.device))
         self.model.eval()
         if not os.path.exists('./results/' + self.args.save_name + '/'):
             os.makedirs('./results/' + self.args.save_name + '/')
@@ -185,7 +206,7 @@ class Exp_Steady(Exp_Basic):
         with torch.no_grad():
             for pos, fx, cond, y in self.test_loader_full:
                 id += 1
-                x, fx, cond, y = pos.cuda(), fx.cuda(), cond.cuda(), y.cuda()
+                x, fx, cond, y = pos.to(self.device), fx.to(self.device), cond.to(self.device), y.to(self.device)
                 fx = torch.cat((fx, cond.repeat(1, fx.shape[1], 1)), dim=-1)
                 if self.args.fun_dim == 0:
                     fx = None

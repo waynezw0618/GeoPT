@@ -1,0 +1,25 @@
+python run.py \
+--gpu 0 \
+--data_path ./geopt_npys \
+--loader NPYFolder \
+--task steady_cond \
+--geotype unstructured \
+--space_dim 3 \
+--fun_dim 9 \
+--out_dim 4 \
+--sample_points 10000 \
+--normalize 1 \
+--model Transolver \
+--n_hidden 256 \
+--n_heads 8 \
+--n_layers 8 \
+--mlp_ratio 2 \
+--slice_num 32 \
+--ntrain 1 \
+--ntest 1 \
+--batch-size 1 \
+--epochs 20 \
+--eval 0 \
+--save_name starccm_geopt_custom \
+--finetune 1 \
+--finetune_name GeoPT_8layers

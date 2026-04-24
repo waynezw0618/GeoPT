@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import random
+import re
 from utils.normalizer import UnitTransformer, UnitGaussianNormalizer
 
 
@@ -60,7 +61,6 @@ class DrivAerML(object):
                 self.y_normalizer = UnitGaussianNormalizer(train_y)
 
             train_y = self.y_normalizer.encode(train_y)
-            self.y_normalizer.cuda()
 
         train_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),
@@ -140,7 +140,6 @@ class NASA(object):
                 self.y_normalizer = UnitGaussianNormalizer(train_y)
 
             train_y = self.y_normalizer.encode(train_y)
-            self.y_normalizer.cuda()
 
         train_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),
@@ -206,7 +205,6 @@ class AirCraft(object):
                 self.y_normalizer = UnitGaussianNormalizer(train_y)
 
             train_y = self.y_normalizer.encode(train_y)
-            self.y_normalizer.cuda()
 
         train_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),
@@ -276,7 +274,6 @@ class DTCHull(object):
                 self.y_normalizer = UnitGaussianNormalizer(train_y)
 
             train_y = self.y_normalizer.encode(train_y)
-            self.y_normalizer.cuda()
 
         train_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),
@@ -342,9 +339,127 @@ class Car_Crash(object):
                 self.y_normalizer = UnitGaussianNormalizer(train_y)
 
             train_y = self.y_normalizer.encode(train_y)
-            self.y_normalizer.cuda()
             print(self.y_normalizer.mean)
             print(self.y_normalizer.std)
+
+        train_loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),
+            batch_size=self.batch_size,
+            shuffle=True)
+        test_loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(test_pos, test_pos, test_cond, test_y),
+            batch_size=self.batch_size,
+            shuffle=False)
+        print("Dataloading is over.")
+        return train_loader, test_loader, [train_y.shape[1]]
+
+
+class NPYFolder(object):
+    def __init__(self, args):
+        self.data_path = args.data_path
+        self.data = os.listdir(args.data_path)
+        self.batch_size = args.batch_size
+        self.ntrain = args.ntrain
+        self.ntest = args.ntest
+        self.normalize = args.normalize
+        self.norm_type = args.norm_type
+        self.sample_points = max(0, getattr(args, "sample_points", 0))
+
+        if self.norm_type not in ["UnitTransformer", "UnitGaussianNormalizer"]:
+            raise ValueError(
+                f"Unsupported norm_type: {self.norm_type}. Must be 'UnitTransformer' or 'UnitGaussianNormalizer'.")
+
+    def _discover_case_ids(self):
+        ids = []
+        for name in self.data:
+            match = re.fullmatch(r"x_(\d+)\.npy", name)
+            if match is None:
+                continue
+            case_id = int(match.group(1))
+            y_path = os.path.join(self.data_path, f"y_{case_id}.npy")
+            c_path = os.path.join(self.data_path, f"cond_{case_id}.npy")
+            if os.path.isfile(y_path) and os.path.isfile(c_path):
+                ids.append(case_id)
+        ids.sort()
+        return ids
+
+    def _sample_case(self, x, y, rng, full_mesh):
+        if full_mesh or self.sample_points <= 0 or x.shape[0] <= self.sample_points:
+            return x, y
+
+        idx = rng.choice(x.shape[0], size=self.sample_points, replace=False)
+        return x[idx, :], y[idx, :]
+
+    def _load_case(self, case_id, rng, full_mesh):
+        x = np.load(os.path.join(self.data_path, f"x_{case_id}.npy"))
+        y = np.load(os.path.join(self.data_path, f"y_{case_id}.npy"))
+        cond = np.atleast_1d(np.load(os.path.join(self.data_path, f"cond_{case_id}.npy"))).astype(np.float32)
+
+        if y.ndim == 1:
+            y = y[:, None]
+
+        x, y = self._sample_case(x, y, rng, full_mesh)
+        return x.astype(np.float32), y.astype(np.float32), cond
+
+    def _build_split_ids(self, case_ids):
+        if not case_ids:
+            raise ValueError(f"No x_i/y_i/cond_i triplets found under {self.data_path}")
+
+        total = len(case_ids)
+        if total == 1:
+            print("[NPYFolder] Only 1 case found. Using the same case for both train and test.")
+            return case_ids[:1], case_ids[:1]
+
+        if self.ntrain + self.ntest > total:
+            raise ValueError(
+                f"Requested ntrain={self.ntrain} and ntest={self.ntest}, "
+                f"but only found {total} complete cases in {self.data_path}."
+            )
+
+        train_ids = case_ids[:self.ntrain]
+        test_ids = case_ids[-self.ntest:]
+        return train_ids, test_ids
+
+    def get_loader(self, full_mesh=False):
+        print("loading generic npy folder dataset...")
+        case_ids = self._discover_case_ids()
+        train_ids, test_ids = self._build_split_ids(case_ids)
+        rng = np.random.default_rng(seed=0)
+
+        train_pos = []
+        train_y = []
+        train_cond = []
+        for case_id in train_ids:
+            x, y, cond = self._load_case(case_id, rng, full_mesh)
+            train_pos.append(x)
+            train_y.append(y)
+            train_cond.append(cond)
+
+        test_pos = []
+        test_y = []
+        test_cond = []
+        for case_id in test_ids:
+            x, y, cond = self._load_case(case_id, rng, full_mesh)
+            test_pos.append(x)
+            test_y.append(y)
+            test_cond.append(cond)
+
+        train_pos = torch.tensor(np.array(train_pos), dtype=torch.float)
+        train_y = torch.tensor(np.array(train_y), dtype=torch.float)
+        train_cond = torch.tensor(np.array(train_cond), dtype=torch.float)[:, None, :]
+        test_pos = torch.tensor(np.array(test_pos), dtype=torch.float)
+        test_y = torch.tensor(np.array(test_y), dtype=torch.float)
+        test_cond = torch.tensor(np.array(test_cond), dtype=torch.float)[:, None, :]
+
+        print(train_pos.shape, train_y.shape, train_cond.shape, test_pos.shape, test_y.shape, test_cond.shape)
+
+        if self.normalize:
+            if self.norm_type == 'UnitTransformer':
+                self.y_normalizer = UnitTransformer(train_y)
+            elif self.norm_type == 'UnitGaussianNormalizer':
+                self.y_normalizer = UnitGaussianNormalizer(train_y)
+
+            train_y = self.y_normalizer.encode(train_y)
 
         train_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(train_pos, train_pos, train_cond, train_y),

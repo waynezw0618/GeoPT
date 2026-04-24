@@ -6,11 +6,15 @@
 2. **Python 转换脚本**把 CSV 转成 GeoPT 可读的 `x_i.npy / y_i.npy / cond_i.npy`。
 3. **Linux Shell 批处理**遍历 `.sim` 案例并自动完成导出+转换。
 
+如果你的 `.sim` 里还没有预先配置 `GeoPT_Volume_Table / GeoPT_Surface_Table`，可以直接使用本目录里的 `AutoExportGeoPTFields.java` 自动创建临时内部表并导出 CSV。
+
 ---
 
 ## 1) STAR-CCM+ Java 宏
 
 文件：`ExportGeoPTFields.java`
+
+自动建表版本：`AutoExportGeoPTFields.java`
 
 ### 你需要在 STAR-CCM+ 里先准备
 - 一个体网格采样表：`GeoPT_Volume_Table`
@@ -27,6 +31,12 @@
 
 ```bash
 starccm+ -batch /path/to/ExportGeoPTFields.java /path/to/case.sim
+```
+
+如果 case 里没有预建表，可以直接运行：
+
+```bash
+starccm+ -batch /path/to/AutoExportGeoPTFields.java /path/to/case.sim
 ```
 
 导出结果默认在 `.sim` 同目录的 `geopt_exports/` 下：
@@ -61,6 +71,12 @@ python tools/starccm_geopt/starccm_csv_to_geopt.py \
 - `cond_1.npy`：`(C,)` 条件向量（可放 Froude 数、漂角、纵倾等）
 
 > 注意：转换脚本默认应用了与 GeoPT DTCHull 脚本一致的坐标重排（前向映射到 `-X`、Y/Z 互换）和中心化步骤，便于接入 GeoPT。
+>
+> 脚本也兼容常见 STAR-CCM+ 导出列名变体，例如：
+> - `Position[0]` 或 `Position[X] (m)`
+> - `Velocity[0]` 或 `Velocity[i] (m/s)`
+> - `Pressure` 或 `Pressure (Pa)`
+> - `Normal[0]` 或 `Normal[i]`
 
 ---
 

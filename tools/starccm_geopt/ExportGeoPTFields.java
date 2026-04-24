@@ -28,7 +28,7 @@ public class ExportGeoPTFields extends StarMacro {
         Simulation sim = getActiveSimulation();
 
         String simName = sim.getPresentationName().replaceAll("\\s+", "_");
-        File outputDir = new File(resolvePath("."), OUTPUT_SUBDIR);
+        File outputDir = new File(sim.getSessionDirFile(), OUTPUT_SUBDIR);
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             throw new RuntimeException("Cannot create output directory: " + outputDir.getAbsolutePath());
         }

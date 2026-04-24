@@ -29,6 +29,19 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
+COMMON_COLUMN_ALIASES = {
+    "x": ["Position[0]", "Position[X] (m)", "X (m)"],
+    "y": ["Position[1]", "Position[Y] (m)", "Y (m)"],
+    "z": ["Position[2]", "Position[Z] (m)", "Z (m)"],
+    "ux": ["Velocity[0]", "Velocity[i] (m/s)"],
+    "uy": ["Velocity[1]", "Velocity[j] (m/s)"],
+    "uz": ["Velocity[2]", "Velocity[k] (m/s)"],
+    "p": ["Pressure", "Pressure (Pa)"],
+    "nx": ["Normal[0]", "Normal[i]"],
+    "ny": ["Normal[1]", "Normal[j]"],
+    "nz": ["Normal[2]", "Normal[k]"],
+}
+
 
 def _normalize_colmap(mapping_items: Iterable[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
@@ -59,16 +72,27 @@ def _parse_cond(cond_text: str) -> np.ndarray:
     return np.asarray(values, dtype=np.float32)
 
 
+def _resolve_column_name(df: pd.DataFrame, alias_key: str, requested_name: str) -> str:
+    if requested_name in df.columns:
+        return requested_name
+
+    for candidate in COMMON_COLUMN_ALIASES.get(alias_key, []):
+        if candidate in df.columns:
+            return candidate
+
+    raise KeyError(
+        f"CSV missing column for alias '{alias_key}'. "
+        f"Tried '{requested_name}' and fallbacks {COMMON_COLUMN_ALIASES.get(alias_key, [])}"
+    )
+
+
 def _read_required_columns(df: pd.DataFrame, colmap: Dict[str, str], keys: Tuple[str, ...]) -> np.ndarray:
     missing = [k for k in keys if k not in colmap]
     if missing:
         raise KeyError(f"Missing aliases in --colmap: {missing}")
 
-    missing_cols = [colmap[k] for k in keys if colmap[k] not in df.columns]
-    if missing_cols:
-        raise KeyError(f"CSV missing columns: {missing_cols}")
-
-    return df[[colmap[k] for k in keys]].to_numpy(dtype=np.float32)
+    resolved = [_resolve_column_name(df, k, colmap[k]) for k in keys]
+    return df[resolved].to_numpy(dtype=np.float32)
 
 
 def _transform_geometry(surface_xyz: np.ndarray, surface_n: np.ndarray, volume_xyz: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
